@@ -1,61 +1,92 @@
-import { useState } from "react";
-import Action from "./components/Action";
-import Footer from "./components/Footer";
-import Form from "./components/Form";
+import { useState, useEffect } from "react";
 import Header from "./components/Header";
-import List from "./components/List";
+import Form from "./components/Form";
+import GroceryList from "./components/GroceryList";
+import Footer from "./components/Footer";
+import Toast from "./components/Toast"; // <--- Import Toast
 
-const App = () => {
-  const groceryItems = [
-    {
-      id: 1,
-      name: 'Kopi Bubuk',
-      quantity: 2,
-      checked: true,
-    },
-    {
-      id: 2,
-      name: 'Gula Pasir',
-      quantity: 5,
-      checked: false,
-    },
-    {
-      id: 3,
-      name: 'Air Mineral',
-      quantity: 3,
-      checked: false,
-    },
-  ];
+export default function App() {
+  const [items, setItems] = useState(() => {
+    const savedItems = localStorage.getItem("shopping-list");
+    return savedItems ? JSON.parse(savedItems) : [];
+  });
 
-  const [items, setItems] = useState(groceryItems)
+  // STATE BARU: Untuk mengontrol Toast
+  const [toast, setToast] = useState({ show: false, message: "", type: "success" });
 
-  function handleAddItem(item){
-    setItems([...items, item])
+  useEffect(() => {
+    localStorage.setItem("shopping-list", JSON.stringify(items));
+  }, [items]);
+
+  // FUNGSI HELPER: Memunculkan Toast
+  function triggerToast(message, type = "success") {
+    setToast({ show: true, message, type });
   }
 
-  function handleDelete(id){
-    setItems((items)=> items.filter((item)=> item.id !== id))
+  // FUNGSI HELPER: Menutup Toast
+  function closeToast() {
+    setToast((prev) => ({ ...prev, show: false }));
   }
-  
-  function handleToggle(id){
-    setItems((items)=> items.map((item)=> (item.id === id) ? { ...item, checked: !item.checked} : item))
-    
+
+  function handleAddItem(item) {
+    setItems([...items, item]);
+    triggerToast("Item added successfully!"); // <--- Trigger Toast
   }
-  function handleClearItem(){
-    setItems([])
+
+  function handleDeleteItem(id) {
+    setItems((items) => items.filter((item) => item.id !== id));
+    triggerToast("Item removed.", "danger"); // <--- Trigger Toast (Danger)
   }
-  
+
+  function handleUpdateItem(id, newName) {
+    setItems((items) =>
+      items.map((item) =>
+        item.id === id ? { ...item, name: newName } : item
+      )
+    );
+    triggerToast("Item updated successfully!");
+  }
+
+  function handleToggleItem(id) {
+    setItems((items) =>
+      items.map((item) =>
+        item.id === id ? { ...item, checked: !item.checked } : item
+      )
+    );
+  }
+
+  function handleClearList() {
+    if (items.length === 0) return;
+    const confirmed = window.confirm("Are you sure you want to delete all tasks?");
+    if (confirmed) {
+        setItems([]);
+        triggerToast("All tasks cleared.", "danger"); // <--- Trigger Toast
+    }
+  }
+
   return (
-    <> 
-      <div className="app">
-        <Header/>
-        <Form onAddItem={handleAddItem}/>
-        <List items={items} onDeleteItem={handleDelete} onToggleItem={handleToggle} />
-        <Action onClearItem={handleClearItem}/>
-        <Footer />
-      </div>  
-    </>
-  )
-}
+    <div className="min-h-screen flex flex-col font-sans bg-slate-900 text-slate-200">
+      <Header />
+      <Form onAddItem={handleAddItem} />
+      
+      <GroceryList 
+        items={items} 
+        onDeleteItem={handleDeleteItem} 
+        onToggleItem={handleToggleItem}
+        onClearList={handleClearList}
+        onUpdateItem={handleUpdateItem}
+      />
+      
+      <Footer items={items} />
 
-export default App
+      {/* RENDER TOAST JIKA SHOW = TRUE */}
+      {toast.show && (
+        <Toast 
+            message={toast.message} 
+            type={toast.type} 
+            onClose={closeToast} 
+        />
+      )}
+    </div>
+  );
+}
